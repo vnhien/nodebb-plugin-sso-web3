@@ -4,6 +4,71 @@
 
 $(document).ready(() => {
 	
+	
+
+	
+		
+	const mobileConnect = () => {
+		localStorage.removeItem('walletconnect');
+		require(['web3'], function(Web3){
+			// console.log("Initializing example");
+			// console.log("web3 is :", Web3 );
+			// console.log("web3 modal is : ",window.Web3Modal);
+			// console.log("evmChain is:", window.evmChains);
+  			//console.log("WalletConnectProvider is", window.WalletConnectProvider);
+  			// console.log("Fortmatic is", window.Fortmatic);
+  			// console.log("window.web3 is", window.web3, "window.ethereum is", window.ethereum);
+			console.log("web3 is :", Web3);
+			const Web3Modal = window.Web3Modal.default;
+			const WalletConnectProvider = window.WalletConnectProvider.default;
+			walletConnectProvider = new WalletConnectProvider({
+				rpc: {
+					56: "https://bsc-dataseed.binance.org/"
+				},
+				network: 'binance',
+			})
+			//const Fortmatic = window.Fortmatic;
+			//const evmChains = window.evmChains;
+			const providerOptions = {
+				walletconnect: {
+				  package: WalletConnectProvider,
+				  options: {
+                    rpc: {
+						56: "https://bsc-dataseed.binance.org/"
+					},
+					network: 'binance',				
+                }
+				}
+			  };
+			
+			  web3Modal = new Web3Modal({
+				cacheProvider: false, // optional
+				providerOptions, // required
+				disableInjectedProvider: false, // optional. For MetaMask / Brave / Opera.
+			  });
+			  try {
+				  		console.log(web3Modal);
+						web3Modal.connect().then(async (provider)=>{							
+							provider.on('disconnect',()=>{
+								console.log('disconect!');
+								provider = null;
+							})
+							console.log("web3modal connected!")
+							window.web3 = new Web3(provider);
+							console.log("closing...");
+							localStorage.removeItem('walletconnect');
+							//localStorage.removeItem('WALLETCONNECT_DEEPLINK_CHOICE');						
+							web3.eth.getAccounts().then(sign);
+						}).catch((err)=>{
+							console.log("not connected")
+						});
+					
+			  } catch(e) {
+				console.log("Could not get a wallet connection", e);
+				return;
+			  }
+		});
+	 }
 	const showWelcomeMessage = () => {
 		if (ajaxify.data.template.name.startsWith('account')) {
 			return;
@@ -43,12 +108,13 @@ $(document).ready(() => {
 	};
 
 	const sign = accounts => {
+		localStorage.removeItem('walletconnect');
 		if (!accounts.length) {
 			throw new Error('No accounts set up.');
 		}
 		
 		const address = accounts[0];
-		const message = config.termsOfUse ? config.termsOfUse : `Welcome to ${config.siteTitle || 'NodeBB'}`;
+		const message = config.termsOfUse ? config.termsOfUse : `Welcome to ${config.siteTitle || 'TravaForum'}`;
 
 		web3.eth.personal.sign(message, address).then(signed => {
 			console.log('signing!')
@@ -61,6 +127,10 @@ $(document).ready(() => {
 					message: message,
 					signed: signed,
 				}),
+			})
+			.catch(err => { 
+				console.log("not signed:",err);
+				localStorage.removeItem('walletconnect'); 
 			})
 			.then(async (a) => {
 				//console.log('here', a);
@@ -76,21 +146,19 @@ $(document).ready(() => {
 				if (ajaxify.data.template.name === 'account/edit') {
 					ajaxify.go(`${config.relative_path}/me/edit`);
 				} else {
-					// window.location.reload();
-					//ajaxify.go(`${config.relative_path}/me/edit`)
-					//window.location.reload();
+					window.location.reload();
 				}
-			}).catch(err => { console.log(err); });
+			}).catch(err => { 
+				console.log("not signed:",err);
+				localStorage.removeItem('walletconnect'); 
+			});
 		}).catch(err => { console.log(err); });
+		
 	}
 	
 	if (config.uid && config.requireEmailConfirmation && !app.user.email) {
 		showWelcomeMessage();
 	}
-
-	// if (!config.uid && window.ethereum) {
-	// 	authenticate();
-	// }
 	
 	
 	$(window).on('action:ajaxify.end', () => {
@@ -99,11 +167,9 @@ $(document).ready(() => {
 			$('[data-component="web3/disassociate"]').on('click', deauthenticate);
 		}
 		if (ajaxify.data.template.name === 'login') {
-			console.log('login form loaded!');
-			$('#connect-with-metamask').on('click',function(){
-				authenticate();
-				console.log('metamask connecting!');
-			});
+			$('#connect-login').on('click',function(){
+				mobileConnect();
+			})
 		}
 	});
 });
