@@ -13,7 +13,6 @@ plugin.init = async params => {
 	router.get('/admin/plugins/sso/web3', middleware.admin.buildHeader, controllers.renderAdminPage);
 	router.get('/api/admin/plugins/sso/web3', controllers.renderAdminPage);
 	router.post('/deauth/web3', [middleware.requireUser, middleware.applyCSRF], controllers.deauth);
-	router.post('/nounce', controllers.getNounce);
 
 	auth.init();
 };
