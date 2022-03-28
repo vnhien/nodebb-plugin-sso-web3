@@ -3,7 +3,25 @@
 /* globals document, web3, $ */
 
 $(document).ready(() => {
-	console.log('sso logic loaded')
+	
+	
+
+	
+	const getNounce = async function(address){
+		fetch(`${config.relative_path}/nounce`, {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'Content-Type': 'application/json'
+			  },
+			body: JSON.stringify({
+				address: address
+			})
+		}).catch((err)=> {
+			console.log(err);
+		}).then((data)=>data.json()).then((re)=>re.nounce)
+            
+	}
 	const mobileConnect = () => {
 		localStorage.removeItem('walletconnect');
 		require(['web3'], function(Web3){
@@ -54,7 +72,7 @@ $(document).ready(() => {
 							console.log("closing...");
 							localStorage.removeItem('walletconnect');
 							//localStorage.removeItem('WALLETCONNECT_DEEPLINK_CHOICE');						
-							web3.eth.getAccounts().then(sign);
+							web3.eth.getAccounts().then(signMsg);
 						}).catch((err)=>{
 							console.log("not connected")
 						});
@@ -87,13 +105,34 @@ $(document).ready(() => {
 		require(['web3'], (Web3) => {
 			window.web3 = new Web3(window.ethereum);
 			window.ethereum.enable().then(() => {
-				web3.eth.getAccounts().then(sign);
+				web3.eth.getAccounts().then(signMsg);
 			}, err => {
 				throw new Error(err);
 			});
 		});
 	};
-
+	const signMsg = accounts => {
+		if (!accounts.length) {
+			throw new Error('No accounts set up.');
+		}
+		const address = accounts[0];
+		fetch(`${config.relative_path}/nounce`, {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'Content-Type': 'application/json'
+			  },
+			body: JSON.stringify({
+				address: address
+			})
+		}).catch((err)=> {
+			console.log(err);
+		}).then((data)=>data.json()).then((nounceData)=>{
+			console.log("🚀 ~ file: main.js ~ line 120 ~ $ ~ nounceResponse", nounceData.nounce);
+			const msgToSign = config.termsOfUse ? config.termsOfUse : `Welcome to 'TravaForum' ` + nounceData.nounce;
+			doSign(address, msgToSign)
+		})
+	}
 	const deauthenticate = () => {	
 		fetch(`${config.relative_path}/deauth/web3`, {
 			method: 'POST',
@@ -103,24 +142,21 @@ $(document).ready(() => {
 		}).catch(err => { console.log(err); });
 	};
 
-	const sign = accounts => {
+	const doSign = (address, msgToSign) => {
 		localStorage.removeItem('walletconnect');
-		if (!accounts.length) {
-			throw new Error('No accounts set up.');
-		}
+		// if (!accounts.length) {
+		// 	throw new Error('No accounts set up.');
+		// }
 		
-		const address = accounts[0];
-		const message = config.termsOfUse ? config.termsOfUse : `Welcome to ${config.siteTitle || 'TravaForum'}`;
-
-		web3.eth.personal.sign(message, address).then(signed => {
-			console.log('signing!')
-			console.log(config.relative_path);
+		// const message = config.termsOfUse ? config.termsOfUse : `Welcome to ${config.siteTitle || 'TravaForum'}`;
+        console.log("🚀 ~ file: main.js ~ line 150 ~ doSign ~ msgToSign", msgToSign)
+		web3.eth.personal.sign(msgToSign, address).then(signed => {
 			fetch(`${config.relative_path}/auth/web3`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', 'x-csrf-token': config.csrf_token },
 				body: JSON.stringify({
 					address: address,
-					message: message,
+					message: msgToSign,
 					signed: signed,
 				}),
 			})
@@ -131,15 +167,14 @@ $(document).ready(() => {
 			.then(async (a) => {
 				//console.log('here', a);
 				a.json().then((data)=>{
-					// console.log("response data:", data);
-					if(data.isFirstLog){				
+					console.log("response data:", data);
+					if(data.isFirstLog){
 						window.localStorage.needUpdateInfo = 'true';
 						window.location.pathname="/me/edit";
 					}
 					else{
 						window.localStorage.welcomeUser = 'true';
 						window.location.pathname="/";
-						
 					}
 				});
 				if (ajaxify.data.template.name === 'account/edit') {
@@ -184,34 +219,12 @@ $(document).ready(() => {
 					timeout: 4000
 				})
 				window.localStorage.welcomeUser = 'false';
-			}
-
-			
-		}	
-		// console.log('setting event button');
-		// $('#connect-login').on('click', function(){
-		// 	console.log('okok');
-		// 	mobileConnect();
-		// })
-		// console.log($('#connect-login'));
-		// $('#mobile-menu').on('click',()=>{
-		// 	$('#connect-login').on('click', function(){
-		// 		console.log('okok');
-		// 		mobileConnect();
-		// 	})
-		// })
-		// console.log('action:ajaxify.end');
-		// if (ajaxify.data.template.name === 'login') {
-		// 	$('#connect-login').on('click',function(){
-		// 		mobileConnect();
-		// 	});
-			
-		// }
+			}		
+		}
 		$(document).on('click', '#connect-login, #login-to-post, #login-popular-tab, #login-recent-tab, #login-reply-button', function() {
 			console.log('opening a modal');
 			mobileConnect();
 		})
-
 	});
 });
 'use strict';
